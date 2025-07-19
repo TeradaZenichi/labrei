@@ -1,0 +1,92 @@
+services:
+  postgresql:
+    image: timescale/timescaledb:2.14.2-pg15
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+      - ./postgresql/init_buses.sql:/docker-entrypoint-initdb.d/init_buses.sql:ro
+    ports:
+      - "5432:5432"
+
+  pgadmin:
+    image: dpage/pgadmin4:8.7
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+      # - ./pgadmin/pgpassfile:/pgpassfile
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgresql
+
+  modbus_collector:
+    build: ./modbus_collector
+    container_name: modbus_collector
+    restart: unless-stopped
+    environment:
+      MODBUS_HOST: ${MODBUS_HOST}
+      MODBUS_PORT: ${MODBUS_PORT}
+      POLL_INTERVAL: ${POLL_INTERVAL}
+    depends_on:
+      - backend
+    volumes:
+      - ./modbus_collector:/app
+
+  backend:
+    build: ./backend
+    container_name: backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgresql
+    volumes:
+      - ./backend:/app
+
+  timescale_maintenance:
+    build: ./maintenance      # apontando para a nova pasta
+    container_name: timescale_maintenance
+    restart: unless-stopped
+    environment:
+      DB_HOST:              ${DB_HOST}
+      DB_PORT:              ${DB_PORT}
+      DB_NAME:              ${DB_NAME}
+      DB_USER:              ${DB_USER}
+      DB_PASSWORD:          ${DB_PASSWORD}
+      RETENTION_DAYS:       ${RETENTION_DAYS}
+      COMPRESS_AFTER_HOURS: ${COMPRESS_AFTER_HOURS}
+      RUN_INTERVAL_HOURS:   ${RUN_INTERVAL_HOURS}
+    depends_on:
+      - postgresql        
+
+  # frontend:
+  #   build: ./frontend
+  #   container_name: frontend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:80"
+  #   environment:
+  #     REACT_APP_API_URL: "http://backend:8000"
+  #   depends_on:
+  #     - backend      
+
+volumes:
+  postgresql_data:
+  pgadmin_data:

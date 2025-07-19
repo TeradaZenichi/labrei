@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "LabREI-DB",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "labrei_microgrid",
+      "Username": "labrei_admin",
+      "SSLMode": "prefer"
+    }
+  }
+}
